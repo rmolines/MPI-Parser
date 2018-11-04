@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.7)
-project(cpr-example)
+project(mpi-parser)
 
 if(NOT ${CMAKE_VERSION} LESS 3.2)
     set(CMAKE_CXX_STANDARD 11)
@@ -29,8 +29,14 @@ else()
     endif()
 endif()
 
+find_library(gumbo REQUIRED)
+find_package(Boost REQUIRED mpi serialization)
+find_package(MPI REQUIRED)
+
+include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${MPI_CXX_INCLUDE_PATH})
 add_subdirectory(opt)
 
-add_executable(example example.cpp)
-target_link_libraries(example ${CPR_LIBRARIES})
+add_executable(mpi-parser main-mpi.cpp json.hpp)
+target_link_libraries(mpi-parser gumbo ${CPR_LIBRARIES} ${CURL_LIBRARIES} ${Boost_LIBRARIES} ${MPI_CXX_LIBRARIES})
 include_directories(${CPR_INCLUDE_DIRS} ${JSON_INCLUDE_DIRS})
