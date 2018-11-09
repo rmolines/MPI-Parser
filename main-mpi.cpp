@@ -11,7 +11,10 @@
 #include <boost/mpi.hpp>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/string.hpp>
+#include <chrono>
 
+bool OUTPUT = false;
+typedef std::chrono::high_resolution_clock Time;
 // for convenience
 using json = nlohmann::json;
 using namespace std;
@@ -215,6 +218,9 @@ static void create_jsons(boost::mpi::communicator world)
 
     if (world.rank() == 0)
     {
+        auto start = Time::now();
+        auto zero_start = Time::now();
+
         vector<vector<string>> prod_urls;
         bool found_next = true;
         vector<string> url_list;
@@ -239,7 +245,6 @@ static void create_jsons(boost::mpi::communicator world)
         }
 
 
-        
         while (found_next)
         {   
             found_next = false;
@@ -261,17 +266,21 @@ static void create_jsons(boost::mpi::communicator world)
                 }
                 n_prods++;
             }
+            
 
             next_url = URL + next_url;
             url_list.clear();
         }
 
         string done = "done";
+
         for (int i=1; i<world.size(); i++){
             world.send(i, 0, done);
         }
 
-        cout << "Numero de produtos: " << n_prods << endl;
+        auto zero_end = Time::now();
+        std::chrono::duration<double> diff_zero = zero_end-zero_start;
+        
         vector<string> infos;
         int counter = 0;
 
@@ -295,27 +304,61 @@ static void create_jsons(boost::mpi::communicator world)
                 jay["pic_url"] = pic_url;
                 jay["category"] = category;
                 
-                // auto f_pos = f_price.find_last_of('R');
-                // f_price = f_price.substr(f_pos);
-                // auto f_pos2 = f_price.find_first_of('\\');
-                // f_price = f_price.substr(f_pos2);
-                // jay["f_price"] = f_price;
-                
-
-                cout << jay << endl;
+                if(OUTPUT){
+                    cout << jay << endl;
+                }
                 counter++;
                 infos.clear();
             }
         }
+
+        auto end = Time::now();
+        std::chrono::duration<double> diff = end-start;
+
+        cout << "TEMPO TOTAL: " << diff.count() << endl;
+        double total_time = 0;
+        double temp_time = 0;
+        double temp_download = 0;
+        double download_time = 0;
+        double temp_process = 0;
+        double process_time = 0;
+
+        for (int i = 0; i < prods_per_process.size(); i++)
+        {    
+            world.recv(i+1, 2, temp_time);
+            total_time += temp_time;
+            world.recv(i+1, 3, temp_download);
+            download_time += temp_download;
+            world.recv(i+1, 4, temp_process);
+            process_time += temp_process;
+
+        }
+
+        cerr << "TEMPO MÉDIO POR NÓ: " << total_time/(world.size()-1) << "s" << endl;
+
+        cerr << "TEMPO MÉDIO POR PRODUTO: " << total_time/n_prods << "s" << endl;
+
+        cerr << "TEMPO TOTAL ESPERANDO POR DOWNLOAD: " << download_time << "s" << endl;
+
+        cerr << "TEMPO TOTAL ESPERANDO PARA PROCESSAR: " << process_time << "s" << endl;
+
+        cerr << "TEMPO TOTAL PROCESSO ZERO: " << diff_zero.count() << "s" << endl;
+
     }
     else
     {
+        auto start = Time::now();
 
+        double download_time = 0;
+        double process_time = 0;
         string prod_url;
         GumboOutput *output;
         int counter = 0;
+        cout << "Process " << world.rank() << " running" << endl;
+
         while (true)
         {   
+            cout << "Process " << world.rank() << " finished " << counter << " products" << endl;
             world.recv(0, 0, prod_url);
             if (prod_url.compare("done") == 0)
             {   
@@ -326,9 +369,18 @@ static void create_jsons(boost::mpi::communicator world)
                 string name, description, pic_url, price, f_price;
                 bool found = false;
                 json j;
+                auto start_download = Time::now();
                 auto r = cpr::Get(cpr::Url{prod_url});
+                auto end_download = Time::now(); 
+                std::chrono::duration<double> diff_download = end_download-start_download;
+                download_time += diff_download.count();
+
+                auto process_start = Time::now();
                 output = gumbo_parse(r.text.c_str());
                 find_product_infos(output->root, found, name, description, pic_url, price, f_price);
+                auto process_end = Time::now();
+                std::chrono::duration<double> diff_process = process_end-process_start;
+                process_time += diff_process.count();
 
                 vector<string> infos;
                 infos.push_back(name);
@@ -337,12 +389,25 @@ static void create_jsons(boost::mpi::communicator world)
                 infos.push_back(pic_url);
                 infos.push_back(f_price);
 
+                counter++;
+
 
 
                 world.send(0, 1, infos);
             }
+
         }
+        cout << "Process " << world.rank() << " finishing" << endl;
+
         gumbo_destroy_output(&kGumboDefaultOptions, output);
+        auto end = Time::now();
+        std::chrono::duration<double> diff = end-start;
+        // std::cout << "Time : " << diff.count() << " s\n";
+        world.send(0, 2, diff.count());
+        world.send(0, 3, download_time);
+        world.send(0, 4, process_time);
+
+        
 
     }
 
@@ -350,10 +415,13 @@ static void create_jsons(boost::mpi::communicator world)
 
 int main(int argc, char **argv)
 {
+    string temp = argv[1];
+    URL = temp;
+
     boost::mpi::environment env{argc, argv};
     boost::mpi::communicator world;
     // string temp = argv[1];
     // URL = temp;
-
     create_jsons(world);
+
 }
