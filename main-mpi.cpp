@@ -315,7 +315,6 @@ static void create_jsons(boost::mpi::communicator world)
         auto end = Time::now();
         std::chrono::duration<double> diff = end-start;
 
-        cout << "TEMPO TOTAL: " << diff.count() << endl;
         double total_time = 0;
         double temp_time = 0;
         double temp_download = 0;
@@ -333,6 +332,10 @@ static void create_jsons(boost::mpi::communicator world)
             process_time += temp_process;
 
         }
+
+        cerr << "TOTAL DE PRODUTOS: " << n_prods << endl;
+
+        cout << "TEMPO TOTAL: " << diff.count() << "s" << endl;
 
         cerr << "TEMPO MÉDIO POR NÓ: " << total_time/(world.size()-1) << "s" << endl;
 
