@@ -38,5 +38,7 @@ include_directories(${MPI_CXX_INCLUDE_PATH})
 add_subdirectory(opt)
 
 add_executable(mpi-parser main-mpi.cpp json.hpp)
+add_executable(seq-parser main-seq.cpp json.hpp)
 target_link_libraries(mpi-parser gumbo ${CPR_LIBRARIES} ${CURL_LIBRARIES} ${Boost_LIBRARIES} ${MPI_CXX_LIBRARIES})
+target_link_libraries(seq-parser gumbo ${CPR_LIBRARIES} ${CURL_LIBRARIES})
 include_directories(${CPR_INCLUDE_DIRS} ${JSON_INCLUDE_DIRS})

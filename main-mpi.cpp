@@ -357,11 +357,9 @@ static void create_jsons(boost::mpi::communicator world)
         string prod_url;
         GumboOutput *output;
         int counter = 0;
-        cout << "Process " << world.rank() << " running" << endl;
 
         while (true)
         {   
-            cout << "Process " << world.rank() << " finished " << counter << " products" << endl;
             world.recv(0, 0, prod_url);
             if (prod_url.compare("done") == 0)
             {   
@@ -400,7 +398,6 @@ static void create_jsons(boost::mpi::communicator world)
             }
 
         }
-        cout << "Process " << world.rank() << " finishing" << endl;
 
         gumbo_destroy_output(&kGumboDefaultOptions, output);
         auto end = Time::now();
