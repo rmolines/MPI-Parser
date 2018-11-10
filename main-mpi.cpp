@@ -333,9 +333,13 @@ static void create_jsons(boost::mpi::communicator world)
 
         }
 
+        std::string filename = "results/mpi-"+to_string(world.size())+"-"+URL;
+        std::ofstream myfile;
+        myfile.open (filename);
+
         cerr << "TOTAL DE PRODUTOS: " << n_prods << endl;
 
-        cout << "TEMPO TOTAL: " << diff.count() << "s" << endl;
+        cerr << "TEMPO TOTAL: " << diff.count() << "s" << endl;
 
         cerr << "TEMPO MÉDIO POR NÓ: " << total_time/(world.size()-1) << "s" << endl;
 
@@ -347,6 +351,12 @@ static void create_jsons(boost::mpi::communicator world)
 
         cerr << "TEMPO TOTAL PROCESSO ZERO: " << diff_zero.count() << "s" << endl;
 
+        myfile << diff.count() << endl;
+        myfile << n_prods << endl;
+        myfile << download_time << endl;
+        myfile << process_time << endl;
+
+        myfile.close();
     }
     else
     {
@@ -402,7 +412,6 @@ static void create_jsons(boost::mpi::communicator world)
         gumbo_destroy_output(&kGumboDefaultOptions, output);
         auto end = Time::now();
         std::chrono::duration<double> diff = end-start;
-        // std::cout << "Time : " << diff.count() << " s\n";
         world.send(0, 2, diff.count());
         world.send(0, 3, download_time);
         world.send(0, 4, process_time);
@@ -418,10 +427,14 @@ int main(int argc, char **argv)
     string temp = argv[1];
     URL = temp;
 
+    temp = argv[2];
+    if (temp.compare("print") == 0){
+        OUTPUT = true;
+    }
+
     boost::mpi::environment env{argc, argv};
     boost::mpi::communicator world;
-    // string temp = argv[1];
-    // URL = temp;
+
     create_jsons(world);
 
 }

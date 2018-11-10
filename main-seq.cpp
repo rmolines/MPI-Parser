@@ -9,7 +9,6 @@
 #include <chrono>
 #include <fstream>
 typedef std::chrono::high_resolution_clock Time;
-
 // for convenience
 using json = nlohmann::json;
 using namespace std;
@@ -243,7 +242,8 @@ static void find_next_page(GumboNode *node)
 
 static void create_jsons()
 {
-
+    double total_time;
+    auto tt1 = Time::now();
     GumboOutput *output = gumbo_parse(r.text.c_str());
 
     auto pos = URL.find_last_of('/');
@@ -325,23 +325,36 @@ static void create_jsons()
     }
     gumbo_destroy_output(&kGumboDefaultOptions, output);
 
-    cout << "TEMPO TOTAL DOWNLOAD: " << download_time << "s" <<endl;
-    cout << "TOTAL DE PRODUTOS: " << n_prods <<endl;
+    auto tt2 = Time::now();;
+    std::chrono::duration<double> diff2 = tt2-tt1;
 
-    cout << "TEMPO TOTAL PROCESSAMENTO: " << process_time << "s" << endl;
+    cerr << "TEMPO TOTAL: " << diff2.count() << "s" << endl;
+
+    cerr << "TEMPO TOTAL DOWNLOAD: " << download_time << "s" <<endl;
+    cerr << "TOTAL DE PRODUTOS: " << n_prods <<endl;
+
+    cerr << "TEMPO TOTAL PROCESSAMENTO: " << process_time << "s" << endl;
+
+    string filename = "./seq"+URL;
+    ofstream myfile;
+    myfile.open(filename);
+        
+    myfile << diff2.count() << endl;
+    myfile << n_prods << endl;
+    myfile << download_time << endl;
+    myfile << process_time << endl;
+    myfile << "end" << endl;
+
+    myfile.close();
 }
 
 int main(int argc, char **argv)
 {
 
-    double total_time;
-    auto t1 = Time::now();
+
     string temp = argv[1];
     URL = temp;
     
 
     create_jsons();
-    auto t2 = Time::now();;
-    std::chrono::duration<double> diff = t2-t1;
-    cout << "TEMPO TOTAL: " << diff.count() << "s" << endl;
 }
